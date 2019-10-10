@@ -11,3 +11,10 @@ export interface GamepadOptions {
 export const defaults: GamepadOptions = {
   show: ShowType.panel_buttons,
 };
+
+export interface Joystick {
+  x: number;
+  y: number;
+  z: number;
+  inUse?: boolean;
+}

@@ -70,6 +70,8 @@ export class CanvasElement<T> extends PureComponent<Props<T>> {
       canvas.height = this.rect.height * dpr;
 
       const ctx = canvas.getContext('2d')!;
+      (ctx as any).mozImageSmoothingEnabled = false; // firefox
+      ctx.imageSmoothingEnabled = false;
 
       // Scale all drawing operations by the dpr, so you
       // don't have to worry about the difference.

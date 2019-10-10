@@ -1,7 +1,7 @@
 import React, { PureComponent } from 'react';
 import { PanelProps } from '@grafana/ui';
 import { CanvasElement, CanvasMouseCallback } from 'CanvasElement';
-import { GamepadOptions, ShowType } from 'types';
+import { GamepadOptions, ShowType, Joystick } from 'types';
 
 interface Props extends PanelProps<GamepadOptions> {}
 
@@ -31,14 +31,15 @@ export class GamepadPanel extends PureComponent<Props> {
     const btn: boolean[] = [];
     const on = false;
     let wheelX = -1;
-    let panelX = -1;
-    let panelY = -1;
+    const joyR: Joystick = { x: 0, y: 0, z: 0 };
+    const joyB: Joystick = { x: 0, y: 0, z: 0 };
     if (data && data.series) {
       for (const frame of data.series) {
         if (!frame.name) {
           continue;
         }
 
+        // Buttons by Index
         if (frame.name.startsWith('panel_Button')) {
           const v = frame.fields[1];
           if (v && v.name === 'value') {
@@ -57,22 +58,56 @@ export class GamepadPanel extends PureComponent<Props> {
           }
         }
 
-        // Panel X
-        if (frame.name.startsWith('panel_GenericDesktopX')) {
+        // Panel Joysticks
+        if (frame.name.startsWith('panel_GenericDesktop')) {
           const v = frame.fields[1];
           if (v && v.name === 'value') {
-            panelX = v.values.get(v.values.length - 1);
-          }
-        }
-        // Panel X
-        if (frame.name.startsWith('panel_GenericDesktopY')) {
-          const v = frame.fields[1];
-          if (v && v.name === 'value') {
-            panelY = v.values.get(v.values.length - 1);
+            const val = (v.values.get(v.values.length - 1) - 128) / 128.0;
+            const inUse = val !== 0;
+            const name = frame.name.substring('panel_GenericDesktop'.length);
+            switch (name) {
+              case 'X':
+                joyB.x = val;
+                if (inUse) {
+                  joyB.inUse = true;
+                }
+                break;
+              case 'Y':
+                joyB.y = val;
+                if (inUse) {
+                  joyB.inUse = true;
+                }
+                break;
+              case 'Z':
+                joyB.z = val;
+                if (inUse) {
+                  joyB.inUse = true;
+                }
+                break;
+              case 'Rx':
+                joyR.x = val;
+                if (inUse) {
+                  joyR.inUse = true;
+                }
+                break;
+              case 'Ry':
+                joyR.y = val;
+                if (inUse) {
+                  joyR.inUse = true;
+                }
+                break;
+              case 'Rz':
+                joyR.z = val;
+                if (inUse) {
+                  joyR.inUse = true;
+                }
+                break;
+            }
           }
         }
       }
     }
+
     if (on) {
       console.log('CLICK', btn);
     }
@@ -127,60 +162,42 @@ export class GamepadPanel extends PureComponent<Props> {
 
     if (options.show === ShowType.panel_stick) {
       ctx.fillStyle = '#d8d9da';
-      ctx.fillText(`STICK: ${panelX} x ${panelY}`, 10, height / 2);
+      const centerY = height / 2;
+      const centerX = width / 2;
+      const radius = Math.min(centerX, centerY) * 0.8;
+
+      let joy = joyR;
+      let color = '#111';
+      if (joyB.inUse) {
+        joy = joyB;
+        color = '#00F';
+      } else if (joyR.inUse) {
+        joy = joyR;
+        color = '#F00';
+      }
+
+      ctx.save();
+      ctx.fillStyle = color;
+      // ctx.fillText(`${JSON.stringify(joy)} ` + inUse, 10, 20);
+
+      ctx.translate(centerX, centerY);
+      ctx.translate(radius * joy.x, radius * joy.y);
+
+      ctx.rotate((Math.PI / 180) * (35 * joy.z));
+      ctx.beginPath();
+      ctx.arc(0, 0, 40, 0, Math.PI * 2, true);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#CCC';
+      ctx.fillRect(-5, -35, 10, 70);
+
+      ctx.restore();
     }
 
     if (options.show === ShowType.wheel) {
       ctx.fillStyle = '#d8d9da';
       ctx.fillText(`WHEEL: ${wheelX}`, 10, height / 2);
     }
-
-    // if (true) {
-    //   ctx.fillStyle = '#d8d9da';
-    //   ctx.fillText(`No events`, 10, height / 2);
-    // }
-
-    // const barheight = height / 2;
-    // const textColor = '#d8d9da';
-    // let idx = 0;
-    // for (const event of info.events) {
-    //   ctx.fillStyle = colors[++idx % colors.length];
-
-    //   let x = event.x;
-    //   if (x < 0) {
-    //     x = 0;
-    //     // TODO, add a note?
-    //   }
-
-    //   if (event.action === EventType.ParamsChanged) {
-    //     ctx.fillRect(x, barheight, width, height - barheight);
-
-    //     ctx.fillStyle = textColor;
-    //     let txt = '';
-    //     if (event.info && event.info.query) {
-    //       txt = event.info.query;
-    //     }
-
-    //     ctx.textBaseline = 'bottom';
-    //     ctx.fillText(txt, x + 5, height - 6);
-    //   } else {
-    //     ctx.fillRect(x, 0, width, height);
-
-    //     ctx.fillStyle = textColor;
-    //     let text = event.action;
-    //     if (event.action === EventType.PageLoad) {
-    //       if (event.info && event.info.query) {
-    //         text = event.info.query;
-    //         ctx.textBaseline = 'bottom';
-    //         ctx.fillText(text, x + 5, height - 6);
-    //       }
-
-    //       text = event.key;
-    //     }
-    //     ctx.textBaseline = 'top';
-    //     ctx.fillText(text, x + 5, 6);
-    //   }
-    // }
   };
 
   onMouseEvent = (info: CanvasMouseCallback<any>) => {
@@ -190,7 +207,7 @@ export class GamepadPanel extends PureComponent<Props> {
   render() {
     return (
       <div>
-        <CanvasElement {...this.props} data={this.props.data} width={600} height={300} draw={this.draw} onMouseEvent={this.onMouseEvent} />
+        <CanvasElement {...this.props} data={this.props.data} width={'100%'} draw={this.draw} onMouseEvent={this.onMouseEvent} />
       </div>
     );
   }
